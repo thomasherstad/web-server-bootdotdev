@@ -9,22 +9,26 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	port := "8080"
+	const filePathRoot = "."
+	const port = "8080"
 
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
+	apiCfg := apiConfig{
+		fileServerHits: 0,
+	}
 
-	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir("."))))
+	//Fileserver
+	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot)))))
 
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, req *http.Request) {
-		req.Header.Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(200)
-		w.Write([]byte("OK"))
-	})
+	//Other
+	mux.HandleFunc("/healthz", handlerReadiness)
+	mux.HandleFunc("/metrics", apiCfg.handlerFileServerHits)
+	mux.HandleFunc("/reset", apiCfg.handlerResetMetrics)
 
-	fmt.Println("Server running")
+	fmt.Println("Server running...")
 	log.Fatal(srv.ListenAndServe())
 
 }
