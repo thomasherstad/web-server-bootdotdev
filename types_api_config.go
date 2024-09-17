@@ -11,17 +11,21 @@ type apiConfig struct {
 
 func (apiCfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// What should happen here for each request?
 		apiCfg.fileServerHits++
-		// How do we call the next handler?
 		next.ServeHTTP(w, r)
 	})
 }
 
 func (apiCfg *apiConfig) handlerFileServerHits(w http.ResponseWriter, req *http.Request) {
-	req.Header.Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Add("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Hits: %v", apiCfg.fileServerHits)))
+	html := fmt.Sprintf(`<html>
+				<body>
+					<h1>Welcome, Chirpy Admin</h1>
+					<p>Chirpy has been visited %d times!</p>
+				</body>
+			</html>`, apiCfg.fileServerHits)
+	w.Write([]byte(html))
 }
 
 func (apiCfg *apiConfig) middlewareResetMetrics() {
@@ -29,8 +33,7 @@ func (apiCfg *apiConfig) middlewareResetMetrics() {
 }
 
 func (apiCfg *apiConfig) handlerResetMetrics(w http.ResponseWriter, req *http.Request) {
-	req.Header.Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Reset"))
 	apiCfg.middlewareResetMetrics()
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Reset hits to 0"))
 }
