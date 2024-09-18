@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
-	"strings"
 )
 
 func main() {
@@ -44,10 +42,6 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		Body string `json:"body"`
 	}
 
-	type returnVals struct {
-		Valid bool `json:"valid"`
-	}
-
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
@@ -62,8 +56,11 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJson(w, http.StatusOK, returnVals{
-		Valid: true,
+	type cleanedParameters struct {
+		CleanedBody string `json:"cleaned_body"`
+	}
+	respondWithJson(w, http.StatusOK, cleanedParameters{
+		CleanedBody: silenceProfanities(params.Body),
 	})
 }
 
@@ -90,23 +87,4 @@ func respondWithJson(w http.ResponseWriter, code int, payload any) {
 	}
 	w.WriteHeader(code)
 	w.Write(data)
-}
-
-func silenceProfanities(content string) string {
-	words := strings.Fields(content)
-
-	profanities := []string{
-		"kerfuffle",
-		"sharbert",
-		"fornax",
-	}
-
-	for i, word := range words {
-		if slices.Contains(profanities, strings.ToLower(word)) {
-			words[i] = "****"
-		}
-	}
-
-	return strings.Join(words, " ")
-
 }
