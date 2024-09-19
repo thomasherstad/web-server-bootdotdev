@@ -7,6 +7,10 @@ import (
 	"net/http"
 )
 
+const (
+	dbPath = "./database.json"
+)
+
 func main() {
 	mux := http.NewServeMux()
 
@@ -24,11 +28,14 @@ func main() {
 	//Fileserver
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot)))))
 
-	//Api
+	//---API---
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /api/reset", apiCfg.handlerResetMetrics)
+
+	//Chirps
 	mux.HandleFunc("POST /api/chirps", handlerPostChirps)
 	mux.HandleFunc("GET /api/chirps", handlerGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", handlerGetChirpById)
 
 	//Admin
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerFileServerHits)

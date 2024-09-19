@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"web-server-bootdotdev/internal/database"
 )
 
@@ -64,4 +65,36 @@ func isValidChirp(text string) (bool, string) {
 		return false, "Chirp is too long"
 	}
 	return true, ""
+}
+
+func handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("chirpID"))
+	if err != nil {
+		log.Printf("Problem casting query param to int. Error: %v", err)
+		respondWithError(w, http.StatusBadRequest, "")
+		return
+	}
+
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		log.Printf("Problem creating db connection. Error: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	allChirps, err := db.GetChirp()
+	if err != nil {
+		log.Printf("Problem getting chirps. Error: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if id > len(allChirps) || id < 1 {
+		log.Printf("Id out of range. Id: %v, length of db: %v", id, len(allChirps))
+		respondWithError(w, http.StatusNotFound, "Chirp does not exist")
+		return
+	}
+
+	respondWithJson(w, http.StatusOK, allChirps[id-1])
+	log.Printf("ChirpByID request successfully sent")
 }
