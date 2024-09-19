@@ -3,16 +3,21 @@ package database
 import (
 	"encoding/json"
 	"os"
+	"sort"
 	"sync"
 )
 
+//TODO:
+// - use mutex when accessing the file
+// - need to send correct status codes when errors pop up
+
 type DB struct {
 	path string
-	mux  *sync.RWMutex
+	mu   *sync.RWMutex
 }
 
 type Chirp struct {
-	Id   int    `json:id`
+	Id   int    `json:"id"`
 	Body string `json:"body"`
 }
 
@@ -25,6 +30,7 @@ type DBStructure struct {
 func NewDB(path string) (*DB, error) {
 	db := DB{
 		path: path,
+		mu:   &sync.RWMutex{},
 	}
 
 	err := db.ensureDB()
@@ -38,11 +44,9 @@ func NewDB(path string) (*DB, error) {
 // CreateChirp creates a new chirp and saves it to the disk
 func (db *DB) CreateChirp(body string) (Chirp, error) {
 	var data Chirp
-	err := json.Unmarshal([]byte(body), &data)
-	if err != nil {
-		return Chirp{}, nil
-	}
-	database, err := db.readDatabase()
+	data.Body = body
+
+	database, err := db.loadDB()
 	if err != nil {
 		return Chirp{}, err
 	}
@@ -51,19 +55,17 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	database.Chirps[data.Id] = data
 
 	//Save to the disk
-	jsonBytes, err := json.Marshal(database)
+	err = db.writeDB(database)
 	if err != nil {
 		return Chirp{}, err
 	}
-
-	os.WriteFile(db.path, jsonBytes, fs.Perm())
 
 	return data, nil
 }
 
 // GetChirp returns all chirps in the database
 func (db *DB) GetChirp() ([]Chirp, error) {
-	database, err := db.readDatabase()
+	database, err := db.loadDB()
 	if err != nil {
 		return []Chirp{}, err
 	}
@@ -72,6 +74,13 @@ func (db *DB) GetChirp() ([]Chirp, error) {
 	for _, chirp := range database.Chirps {
 		chirps = append(chirps, chirp)
 	}
+
+	//TODO: Needs to be sorted
+
+	sort.Slice(chirps, func(i, j int) bool {
+		return chirps[i].Id < chirps[j].Id
+	})
+
 	return chirps, nil
 }
 
@@ -79,14 +88,23 @@ func (db *DB) GetChirp() ([]Chirp, error) {
 // TODO: RETURN ERRORS PROPERLY
 func (db *DB) ensureDB() error {
 	_, err := os.ReadFile(db.path)
+
+	database := DBStructure{
+		Chirps: make(map[int]Chirp),
+	}
+
 	if os.IsNotExist(err) {
 		os.Create(db.path)
+		db.writeDB(database)
 		return nil
 	}
 	return nil
 }
 
-func (db *DB) readDatabase() (DBStructure, error) {
+func (db *DB) loadDB() (DBStructure, error) {
+	// db.mu.Lock()
+	// defer db.mu.Unlock()
+
 	fileData, err := os.ReadFile(db.path)
 	if err != nil {
 		return DBStructure{}, err
@@ -99,4 +117,20 @@ func (db *DB) readDatabase() (DBStructure, error) {
 	}
 
 	return database, nil
+}
+
+func (db *DB) writeDB(dbStructure DBStructure) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	jsonBytes, err := json.Marshal(dbStructure)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(db.path, jsonBytes, 0777)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -28,6 +28,8 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /api/reset", apiCfg.handlerResetMetrics)
 	mux.HandleFunc("POST /api/chirps", handlerPostChirps)
+	mux.HandleFunc("GET /api/chirps", handlerGetChirps)
+
 	//Admin
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerFileServerHits)
 
