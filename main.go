@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 const (
@@ -12,6 +14,17 @@ const (
 )
 
 func main() {
+	//Delete the db on server startup with the --debug flag for easy debugging
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+	if *dbg {
+		err := os.Remove(dbPath)
+		if err != nil {
+			log.Fatal("Couldn't delete database file on startup")
+		}
+		log.Println("Database deleted.")
+	}
+
 	mux := http.NewServeMux()
 
 	const filePathRoot = "."
