@@ -43,7 +43,7 @@ func handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Incoming chirp: %s\n", string(params.Body))
 
 	// add to db
-	db, err := database.NewDB("./database.json")
+	db, err := database.NewDB(dbPath)
 	if err != nil {
 		log.Printf("error creating database: %v\n", err)
 	}
