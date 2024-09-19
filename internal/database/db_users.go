@@ -1,13 +1,16 @@
 package database
 
 type User struct {
-	Id    int    `json:"id"`
-	Email string `json:"email"`
+	Id       int    `json:"id"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
-	var usr User
-	usr.Email = email
+func (db *DB) CreateUser(email, password string) (User, error) {
+	usr := User{
+		Email:    email,
+		Password: password,
+	}
 
 	database, err := db.loadDB()
 	if err != nil {

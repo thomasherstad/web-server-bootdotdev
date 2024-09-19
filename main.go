@@ -17,6 +17,7 @@ func main() {
 	//Delete the db on server startup with the --debug flag for easy debugging
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
+	// BUG: Exits if there is no database
 	if *dbg {
 		err := os.Remove(dbPath)
 		if err != nil {
@@ -50,7 +51,9 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", handlerGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", handlerGetChirpById)
 
+	//Users
 	mux.HandleFunc("POST /api/users", handlerPostUsers)
+	// mux.HandleFunc("POST /api/login")
 
 	//Admin
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerFileServerHits)
