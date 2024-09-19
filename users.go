@@ -64,3 +64,7 @@ func hashPassword(p string) (string, error) {
 	}
 	return string(hashedPassword), nil
 }
+
+func handlerUserLogin(w http.ResponseWriter, r *http.Request) {
+
+}

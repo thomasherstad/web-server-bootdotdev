@@ -13,6 +13,11 @@ const (
 	dbPath = "./database.json"
 )
 
+//TODO:
+//	- Be able to look up a user by their email (function I think, not endpoint yet)
+//	- Create function to compare hashed/non-hashed passwords
+//	- Add respond with error where necessary
+
 func main() {
 	//Delete the db on server startup with the --debug flag for easy debugging
 	dbg := flag.Bool("debug", false, "Enable debug mode")
@@ -53,7 +58,7 @@ func main() {
 
 	//Users
 	mux.HandleFunc("POST /api/users", handlerPostUsers)
-	// mux.HandleFunc("POST /api/login")
+	mux.HandleFunc("POST /api/login", handlerUserLogin)
 
 	//Admin
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerFileServerHits)
