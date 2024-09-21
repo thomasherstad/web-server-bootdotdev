@@ -2,14 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
+	"web-server-bootdotdev/internal/auth"
 	"web-server-bootdotdev/internal/database"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
+// TODO: Don't allow multiple users with the same email
 func handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
@@ -22,7 +21,7 @@ func handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Incoming user: %s\n", string(params.Email))
 
-	// add to db
+	// connect to db
 	db, err := database.NewDB(dbPath)
 	if err != nil {
 		log.Printf("error creating database: %v\n", err)
@@ -30,41 +29,71 @@ func handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Pre-hashed: %s\n", params.Password)
-	hashedPassword, err := hashPassword(params.Password)
-	if err != nil {
-		log.Printf("Error when hashing the password: %v", err)
-		//respondwitherror
+	// Check if there is already a user with that email
+	_, err = db.GetUserByEmail(params.Email)
+	if err == nil {
+		respondWithError(w, http.StatusConflict, "Email already exists.")
 		return
 	}
-	fmt.Printf("Post-hashed: %s\n", hashedPassword)
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		log.Printf("Error when hashing the password: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password")
+		return
+	}
 
 	usr, err := db.CreateUser(params.Email, hashedPassword)
 	if err != nil {
 		log.Printf("Problem creating user. Error: %v", err)
-		//respond with error
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create user")
 		return
 	}
 
 	log.Printf("Outgoing user: %s\n", usr.Email)
 
 	respondWithJson(w, http.StatusCreated, struct {
-		Id    int
-		Email string
+		Id    int    `json:"id"`
+		Email string `json:"email"`
 	}{
 		Id:    usr.Id,
 		Email: usr.Email,
 	})
 }
 
-func hashPassword(p string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(p), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedPassword), nil
-}
-
 func handlerUserLogin(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	params := database.User{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
+		return
+	}
 
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		log.Printf("error creating database: %v\n", err)
+		//respond with error
+		return
+	}
+
+	user, err := db.GetUserByEmail(params.Email)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
+		return
+	}
+
+	correctPassword := auth.ComparePasswords(user.Password, params.Password)
+	if !correctPassword {
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
+		return
+	}
+
+	respondWithJson(w, http.StatusOK, struct {
+		Id    int    `json:"id"`
+		Email string `json:"email"`
+	}{
+		Id:    user.Id,
+		Email: user.Email,
+	})
 }

@@ -14,9 +14,8 @@ const (
 )
 
 //TODO:
-//	- Be able to look up a user by their email (function I think, not endpoint yet)
-//	- Create function to compare hashed/non-hashed passwords
 //	- Add respond with error where necessary
+//	- Add auth as an internal package
 
 func main() {
 	//Delete the db on server startup with the --debug flag for easy debugging
