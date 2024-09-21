@@ -5,32 +5,36 @@ import (
 	"log"
 	"net/http"
 	"web-server-bootdotdev/internal/auth"
-	"web-server-bootdotdev/internal/database"
 )
 
-// TODO: Don't allow multiple users with the same email
-func handlerPostUsers(w http.ResponseWriter, r *http.Request) {
+type User struct {
+	ID       int    `json:"id"`
+	Email    string `json:"email"`
+	Password string `json:"-"`
+	Token    string `json:"token"`
+}
+
+func (cfg *apiConfig) handlerPostUsers(w http.ResponseWriter, r *http.Request) {
+
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	type response struct {
+		User
+	}
 
 	decoder := json.NewDecoder(r.Body)
-	params := database.User{}
+	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
 	}
 
-	log.Printf("Incoming user: %s\n", string(params.Email))
-
-	// connect to db
-	db, err := database.NewDB(dbPath)
-	if err != nil {
-		log.Printf("error creating database: %v\n", err)
-		//respond with error
-		return
-	}
-
 	// Check if there is already a user with that email
-	_, err = db.GetUserByEmail(params.Email)
+	_, err = cfg.DB.GetUserByEmail(params.Email)
 	if err == nil {
 		respondWithError(w, http.StatusConflict, "Email already exists.")
 		return
@@ -43,7 +47,7 @@ func handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usr, err := db.CreateUser(params.Email, hashedPassword)
+	usr, err := cfg.DB.CreateUser(params.Email, hashedPassword)
 	if err != nil {
 		log.Printf("Problem creating user. Error: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create user")
@@ -52,32 +56,34 @@ func handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Outgoing user: %s\n", usr.Email)
 
-	respondWithJson(w, http.StatusCreated, struct {
-		Id    int    `json:"id"`
-		Email string `json:"email"`
-	}{
-		Id:    usr.Id,
-		Email: usr.Email,
+	respondWithJson(w, http.StatusCreated, response{
+		User: User{
+			ID:    usr.ID,
+			Email: usr.Email,
+		},
 	})
 }
 
-func handlerUserLogin(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds int    `json:"expires_in_seconds,omitempty"`
+	}
+
+	type response struct {
+		User
+	}
+
 	decoder := json.NewDecoder(r.Body)
-	params := database.User{}
+	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
 	}
 
-	db, err := database.NewDB(dbPath)
-	if err != nil {
-		log.Printf("error creating database: %v\n", err)
-		//respond with error
-		return
-	}
-
-	user, err := db.GetUserByEmail(params.Email)
+	user, err := cfg.DB.GetUserByEmail(params.Email)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
@@ -89,11 +95,22 @@ func handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJson(w, http.StatusOK, struct {
-		Id    int    `json:"id"`
-		Email string `json:"email"`
-	}{
-		Id:    user.Id,
+	var expiresInSeconds int
+	if params.ExpiresInSeconds != 0 {
+		expiresInSeconds = params.ExpiresInSeconds
+	} else {
+		expiresInSeconds = 86400 //24 hours
+	}
+
+	token, err := auth.CreateJWTToken(expiresInSeconds, user.ID, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not create token")
+		return
+	}
+
+	respondWithJson(w, http.StatusOK, User{
+		ID:    user.ID,
 		Email: user.Email,
+		Token: token,
 	})
 }

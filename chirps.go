@@ -8,13 +8,8 @@ import (
 	"web-server-bootdotdev/internal/database"
 )
 
-func handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	db, err := database.NewDB("./database.json")
-	if err != nil {
-		log.Printf("Problem establishing connection to database. Error: %v", err)
-		return
-	}
-	chirps, err := db.GetChirp()
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.DB.GetChirp()
 	if err != nil {
 		log.Printf("Problem getting Chirps from database. Error: %v\n", err)
 		return
@@ -23,7 +18,7 @@ func handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, http.StatusOK, chirps)
 }
 
-func handlerPostChirps(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	params := database.Chirp{}
@@ -42,13 +37,7 @@ func handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	params.Body = silenceProfanities(params.Body)
 	log.Printf("Incoming chirp: %s\n", string(params.Body))
 
-	// add to db
-	db, err := database.NewDB(dbPath)
-	if err != nil {
-		log.Printf("error creating database: %v\n", err)
-	}
-
-	chirp, err := db.CreateChirp(params.Body)
+	chirp, err := cfg.DB.CreateChirp(params.Body)
 	if err != nil {
 		log.Printf("Problem creating chirp. Error: %v", err)
 	}
@@ -67,7 +56,7 @@ func isValidChirp(text string) (bool, string) {
 	return true, ""
 }
 
-func handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("chirpID"))
 	if err != nil {
 		log.Printf("Problem casting query param to int. Error: %v", err)
@@ -75,14 +64,7 @@ func handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := database.NewDB(dbPath)
-	if err != nil {
-		log.Printf("Problem creating db connection. Error: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "")
-		return
-	}
-
-	allChirps, err := db.GetChirp()
+	allChirps, err := cfg.DB.GetChirp()
 	if err != nil {
 		log.Printf("Problem getting chirps. Error: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "")

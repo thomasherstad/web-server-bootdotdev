@@ -1,12 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"web-server-bootdotdev/internal/database"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -15,7 +17,7 @@ const (
 
 //TODO:
 //	- Add respond with error where necessary
-//	- Add auth as an internal package
+//	- Handle capitalization in emails
 
 func main() {
 	//Delete the db on server startup with the --debug flag for easy debugging
@@ -30,6 +32,9 @@ func main() {
 		log.Println("Database deleted.")
 	}
 
+	//loaad environment
+	godotenv.Load()
+
 	mux := http.NewServeMux()
 
 	const filePathRoot = "."
@@ -39,8 +44,16 @@ func main() {
 		Addr:    ":" + port,
 		Handler: mux,
 	}
+
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	apiCfg := apiConfig{
 		fileServerHits: 0,
+		DB:             db,
+		jwtSecret:      os.Getenv("JWT_SECRET"),
 	}
 
 	//Fileserver
@@ -51,13 +64,13 @@ func main() {
 	mux.HandleFunc("GET /api/reset", apiCfg.handlerResetMetrics)
 
 	//Chirps
-	mux.HandleFunc("POST /api/chirps", handlerPostChirps)
-	mux.HandleFunc("GET /api/chirps", handlerGetChirps)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", handlerGetChirpById)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerPostChirps)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirpById)
 
 	//Users
-	mux.HandleFunc("POST /api/users", handlerPostUsers)
-	mux.HandleFunc("POST /api/login", handlerUserLogin)
+	mux.HandleFunc("POST /api/users", apiCfg.handlerPostUsers)
+	mux.HandleFunc("POST /api/login", apiCfg.handlerUserLogin)
 
 	//Admin
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerFileServerHits)
@@ -65,29 +78,4 @@ func main() {
 	fmt.Println("Server running...")
 	log.Fatal(srv.ListenAndServe())
 
-}
-
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	if code > 499 {
-		log.Printf("Responding with 5XX error: %s", msg)
-	}
-	type errorResponse struct {
-		Error string `json:"error"`
-	}
-
-	respondWithJson(w, code, errorResponse{
-		Error: msg,
-	})
-}
-
-func respondWithJson(w http.ResponseWriter, code int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	data, err := json.Marshal(payload)
-	if err != nil {
-		log.Printf("Error marshalling JSON: %s", err)
-		w.WriteHeader(500)
-		return
-	}
-	w.WriteHeader(code)
-	w.Write(data)
 }

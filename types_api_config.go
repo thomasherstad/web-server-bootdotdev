@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"web-server-bootdotdev/internal/database"
 )
 
 type apiConfig struct {
 	fileServerHits int
+	DB             *database.DB
+	jwtSecret      string
 }
 
 func (apiCfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {

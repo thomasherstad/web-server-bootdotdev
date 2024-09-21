@@ -3,7 +3,7 @@ package database
 import "errors"
 
 type User struct {
-	Id       int    `json:"id"`
+	ID       int    `json:"id"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -19,8 +19,8 @@ func (db *DB) CreateUser(email, password string) (User, error) {
 		return User{}, err
 	}
 
-	usr.Id = len(database.Users) + 1
-	database.Users[usr.Id] = usr
+	usr.ID = len(database.Users) + 1
+	database.Users[usr.ID] = usr
 
 	//Save to the disk
 	err = db.writeDB(database)
