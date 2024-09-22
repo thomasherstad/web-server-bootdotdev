@@ -2,20 +2,21 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"web-server-bootdotdev/internal/auth"
 )
 
 func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds,omitempty"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type response struct {
 		User
-		Token string `json:"token"`
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -38,24 +39,32 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var expiresInSeconds int
-	if params.ExpiresInSeconds != 0 {
-		expiresInSeconds = params.ExpiresInSeconds
-	} else {
-		expiresInSeconds = 86400 //24 hours
+	// The jwt should expire in 1 hour
+	token, err := auth.CreateJWTToken(user.ID, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not create access token")
+		return
 	}
 
-	token, err := auth.CreateJWTToken(expiresInSeconds, user.ID, cfg.jwtSecret)
+	//Generate refresh token
+	refreshToken, expiration, err := auth.GenerateRefreshToken()
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not create token")
-		return
+		respondWithError(w, http.StatusInternalServerError, "Could not create refresh token")
+	}
+	log.Printf("Generated refresh token: %s", refreshToken)
+
+	//add expiration token to database
+	userTokenized, err := cfg.DB.AddUserRefreshToken(user.ID, refreshToken, expiration)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not save token")
 	}
 
 	respondWithJson(w, http.StatusOK, response{
 		User: User{
-			ID:    user.ID,
-			Email: user.Email,
+			ID:    userTokenized.ID,
+			Email: userTokenized.Email,
 		},
-		Token: token,
+		Token:        token,
+		RefreshToken: refreshToken,
 	})
 }

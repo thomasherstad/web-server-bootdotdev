@@ -8,9 +8,11 @@ import (
 )
 
 type User struct {
-	ID       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"-"`
+	ID                     int    `json:"id"`
+	Email                  string `json:"email"`
+	Password               string `json:"-"`
+	RefreshToken           string `json:"refresh_token"`
+	RefreshTokenExpiration string `json:"expiration"`
 }
 
 func (cfg *apiConfig) handlerPostUsers(w http.ResponseWriter, r *http.Request) {

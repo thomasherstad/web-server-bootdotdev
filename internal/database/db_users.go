@@ -13,17 +13,17 @@ type User struct {
 var ErrNotExists = errors.New("user doesn't exist")
 
 func (db *DB) CreateUser(email, password string) (User, error) {
-	usr := User{
-		Email:    email,
-		Password: password,
-	}
 
 	database, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 
-	usr.ID = len(database.Users) + 1
+	usr := User{
+		ID:       len(database.Users) + 1,
+		Email:    email,
+		Password: password,
+	}
 	database.Users[usr.ID] = usr
 
 	//Save to the disk

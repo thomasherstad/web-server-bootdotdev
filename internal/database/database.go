@@ -15,8 +15,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"users"`
+	Chirps        map[int]Chirp           `json:"chirps"`
+	Users         map[int]User            `json:"users"`
+	RefreshTokens map[string]RefreshToken `json:"refresh_tokens"` //refresh tokens -> user id
 }
 
 // NewDB creates a new database connection
@@ -41,8 +42,9 @@ func (db *DB) ensureDB() error {
 	_, err := os.ReadFile(db.path)
 
 	database := DBStructure{
-		Chirps: make(map[int]Chirp),
-		Users:  make(map[int]User),
+		Chirps:        make(map[int]Chirp),
+		Users:         make(map[int]User),
+		RefreshTokens: make(map[string]RefreshToken),
 	}
 
 	if os.IsNotExist(err) {
