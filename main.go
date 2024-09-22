@@ -32,7 +32,7 @@ func main() {
 		log.Println("Database deleted.")
 	}
 
-	//loaad environment
+	//load environment
 	godotenv.Load()
 
 	mux := http.NewServeMux()
@@ -70,6 +70,7 @@ func main() {
 
 	//Users
 	mux.HandleFunc("POST /api/users", apiCfg.handlerPostUsers)
+	mux.HandleFunc("PUT /api/users", apiCfg.HandlerUserUpdate)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerUserLogin)
 
 	//Admin
