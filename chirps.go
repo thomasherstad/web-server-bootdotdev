@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"web-server-bootdotdev/internal/auth"
 )
@@ -15,13 +16,49 @@ type Chirp struct {
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.DB.GetChirp()
+
+	dbChirps, err := cfg.DB.GetChirp()
 	if err != nil {
 		log.Printf("Problem getting Chirps from database. Error: %v\n", err)
+		respondWithError(w, http.StatusInternalServerError, "Problem getting chirps")
 		return
 	}
 
-	respondWithJson(w, http.StatusOK, chirps)
+	authorID := -1
+	authorIDString := r.URL.Query().Get("author_id")
+	if authorIDString != "" {
+		authorID, err = strconv.Atoi(authorIDString)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "couldn't parse query parameters")
+			return
+		}
+	}
+
+	filteredChirps := []Chirp{}
+	for _, dbChirp := range dbChirps {
+		if authorID != -1 && dbChirp.AuthorID != authorID {
+			continue
+		}
+		filteredChirps = append(filteredChirps, Chirp{
+			ID:       dbChirp.Id,
+			Body:     dbChirp.Body,
+			AuthorID: dbChirp.AuthorID,
+		})
+	}
+
+	sortString := r.URL.Query().Get("sort")
+	log.Printf("Sorting parameter = %s\n", sortString)
+	if sortString == "desc" {
+		log.Println("HERE")
+		sort.Slice(filteredChirps, func(i, j int) bool {
+			return filteredChirps[i].ID > filteredChirps[j].ID
+		})
+	} else {
+		sort.Slice(filteredChirps, func(i, j int) bool {
+			return filteredChirps[i].ID < filteredChirps[j].ID
+		})
+	}
+	respondWithJson(w, http.StatusOK, filteredChirps)
 }
 
 func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request) {
