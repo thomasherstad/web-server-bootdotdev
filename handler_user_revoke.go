@@ -15,6 +15,7 @@ func (cfg *apiConfig) HandlerUserRevoke(w http.ResponseWriter, r *http.Request) 
 	err = cfg.DB.DeleteRefreshToken(refreshToken)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Token does not exist")
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

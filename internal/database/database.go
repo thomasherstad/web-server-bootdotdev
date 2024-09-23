@@ -6,9 +6,6 @@ import (
 	"sync"
 )
 
-//TODO:
-// - need to send correct status codes when errors pop up
-
 type DB struct {
 	path string
 	mu   *sync.RWMutex
@@ -56,8 +53,8 @@ func (db *DB) ensureDB() error {
 }
 
 func (db *DB) loadDB() (DBStructure, error) {
-	// db.mu.Lock()
-	// defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	fileData, err := os.ReadFile(db.path)
 	if err != nil {

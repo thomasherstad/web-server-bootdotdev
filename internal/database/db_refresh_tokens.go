@@ -8,7 +8,7 @@ import (
 type RefreshToken struct {
 	UserId       int       `json:"id"`
 	RefreshToken string    `json:"refresh_token"`
-	Expiry       time.Time `json:"-"`
+	Expiry       time.Time `json:"expiry"`
 }
 
 func (db *DB) AddUserRefreshToken(id int, refreshToken string, expirationTime time.Time) (User, error) {
@@ -62,6 +62,11 @@ func (db *DB) DeleteRefreshToken(refreshToken string) error {
 	}
 
 	delete(database.RefreshTokens, refreshToken)
+
+	err = db.writeDB(database)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
