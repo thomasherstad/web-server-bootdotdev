@@ -5,8 +5,14 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"web-server-bootdotdev/internal/database"
+	"web-server-bootdotdev/internal/auth"
 )
+
+type Chirp struct {
+	ID       int    `json:"id"`
+	Body     string `json:"body"`
+	AuthorID int    `json:"author_id"`
+}
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.DB.GetChirp()
@@ -18,13 +24,29 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, http.StatusOK, chirps)
 }
 
-func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request) {
+	//Each post request also needs a token in the authorization header
+	type parameters struct {
+		Body string `json:"body"`
+	}
 
 	decoder := json.NewDecoder(r.Body)
-	params := database.Chirp{}
+	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
+		return
+	}
+
+	//Get user id from token
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "No jwt token")
+		return
+	}
+	userID, err := auth.ParseJWTToken(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't parse jwt token")
 		return
 	}
 
@@ -32,14 +54,17 @@ func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, r *http.Request) 
 
 	if !isValid {
 		respondWithError(w, http.StatusBadRequest, msg)
+		return
 	}
 
 	params.Body = silenceProfanities(params.Body)
 	log.Printf("Incoming chirp: %s\n", string(params.Body))
 
-	chirp, err := cfg.DB.CreateChirp(params.Body)
+	chirp, err := cfg.DB.CreateChirp(params.Body, userID)
 	if err != nil {
 		log.Printf("Problem creating chirp. Error: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create Chirp")
+		return
 	}
 
 	log.Printf("Outgoing chirp: %s\n", chirp.Body)

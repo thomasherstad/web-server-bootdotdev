@@ -3,14 +3,16 @@ package database
 import "sort"
 
 type Chirp struct {
-	Id   int    `json:"id"`
-	Body string `json:"body"`
+	Id       int    `json:"id"`
+	Body     string `json:"body"`
+	AuthorID int    `json:"author_id"`
 }
 
 // CreateChirp creates a new chirp and saves it to the disk
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, userID int) (Chirp, error) {
 	var data Chirp
 	data.Body = body
+	data.AuthorID = userID
 
 	database, err := db.loadDB()
 	if err != nil {

@@ -27,6 +27,7 @@ func CreateJWTToken(userID int, jwtSecret string) (string, error) {
 	return signedToken, nil
 }
 
+// Returns user id from jwt token
 func ParseJWTToken(tokenString, tokenSecret string) (int, error) {
 	claims := &jwt.RegisteredClaims{}
 
