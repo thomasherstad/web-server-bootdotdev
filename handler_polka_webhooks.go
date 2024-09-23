@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"web-server-bootdotdev/internal/auth"
 	"web-server-bootdotdev/internal/database"
 )
 
@@ -15,9 +16,20 @@ func (cfg *apiConfig) HandlerPolkaWebhooks(w http.ResponseWriter, r *http.Reques
 		} `json:"data"`
 	}
 
+	apiKey, err := auth.GetApiKey(r.Header)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if apiKey != cfg.polkaApiKey {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	params := parameters{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Couldn't decode json")
 		return

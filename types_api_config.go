@@ -10,6 +10,7 @@ type apiConfig struct {
 	fileServerHits int
 	DB             *database.DB
 	jwtSecret      string
+	polkaApiKey    string
 }
 
 func (apiCfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
